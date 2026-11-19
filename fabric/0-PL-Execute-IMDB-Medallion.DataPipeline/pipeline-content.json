@@ -14,54 +14,68 @@
           "secureInput": false,
           "secureOutput": false
         },
-        "name": "Load Kaggle CSV to Bronze",
+        "name": "Discover and load new CSV files",
         "dependsOn": []
       },
       {
-        "type": "TridentNotebook",
-        "typeProperties": {
-          "notebookId": "1a7c205e-1def-4bac-a879-a8ccab2d1efe",
-          "workspaceId": "00000000-0000-0000-0000-000000000000"
-        },
-        "policy": {
-          "timeout": "0.12:00:00",
-          "retry": 0,
-          "retryIntervalInSeconds": 30,
-          "secureInput": false,
-          "secureOutput": false
-        },
-        "name": "Process Bronze to Silver",
+        "type": "IfCondition",
+        "name": "Process pending Bronze data",
         "dependsOn": [
           {
-            "activity": "Load Kaggle CSV to Bronze",
+            "activity": "Discover and load new CSV files",
             "dependencyConditions": [
               "Succeeded"
             ]
           }
-        ]
-      },
-      {
-        "type": "TridentNotebook",
+        ],
         "typeProperties": {
-          "notebookId": "240083c6-39ba-4c4f-a4e8-2910c8b17b1e",
-          "workspaceId": "00000000-0000-0000-0000-000000000000"
-        },
-        "policy": {
-          "timeout": "0.12:00:00",
-          "retry": 0,
-          "retryIntervalInSeconds": 30,
-          "secureInput": false,
-          "secureOutput": false
-        },
-        "name": "Process Silver to Gold",
-        "dependsOn": [
-          {
-            "activity": "Process Bronze to Silver",
-            "dependencyConditions": [
-              "Succeeded"
-            ]
-          }
-        ]
+          "expression": {
+            "value": "@equals(activity('Discover and load new CSV files').output.result.exitValue, 'true')",
+            "type": "Expression"
+          },
+          "ifTrueActivities": [
+            {
+              "type": "TridentNotebook",
+              "typeProperties": {
+                "notebookId": "1a7c205e-1def-4bac-a879-a8ccab2d1efe",
+                "workspaceId": "00000000-0000-0000-0000-000000000000"
+              },
+              "policy": {
+                "timeout": "0.12:00:00",
+                "retry": 0,
+                "retryIntervalInSeconds": 30,
+                "secureInput": false,
+                "secureOutput": false
+              },
+              "name": "Process Bronze to Silver",
+              "dependsOn": []
+            },
+            {
+              "type": "TridentNotebook",
+              "typeProperties": {
+                "notebookId": "240083c6-39ba-4c4f-a4e8-2910c8b17b1e",
+                "workspaceId": "00000000-0000-0000-0000-000000000000"
+              },
+              "policy": {
+                "timeout": "0.12:00:00",
+                "retry": 0,
+                "retryIntervalInSeconds": 30,
+                "secureInput": false,
+                "secureOutput": false
+              },
+              "name": "Process Silver to Gold",
+              "dependsOn": [
+                {
+                  "activity": "Process Bronze to Silver",
+                  "dependencyConditions": [
+                    "Succeeded"
+                  ]
+                }
+              ]
+            }
+          ],
+          "ifFalseActivities": []
+        }
       }
     ]
   }

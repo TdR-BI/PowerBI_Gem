@@ -5,18 +5,30 @@ following Microsoft's medallion architecture:
 
 | Lakehouse | Purpose |
 | --- | --- |
-| `LH_Bronze` | Preserve the Kaggle CSV in `Files/landing` and create a raw Delta table. |
+| `LH_Bronze` | Discover source CSVs in `Files` and append new content to a raw Delta table. |
 | `LH_Silver` | Validate labels, trim text, and derive review length and word count. |
 | `LH_Gold` | Publish an analytics-ready sentiment summary as a Delta table. |
 
-The pipeline `0-PL-Execute-IMDB-Medallion` runs the three notebooks in order.
-The source file is intentionally not stored in Git. Download the Kaggle
-dataset, verify that its terms permit your intended use, and upload
-`IMDB Dataset.csv` to `LH_Bronze` at `Files/landing/IMDB Dataset.csv` before
-running the pipeline. The original CSV remains unchanged; the Bronze table
-copies its two source columns and adds ingestion metadata. The notebook
-validates the expected columns and 50,000-row dataset size without displaying
-review text.
+The pipeline `0-PL-Execute-IMDB-Medallion` discovers input files first and
+runs the Silver and Gold notebooks only when processing is pending.
+The source files are intentionally not stored in Git. Download the Kaggle
+dataset, verify that its terms permit your intended use, and upload one or
+more CSV files anywhere under the `Files` folder of `LH_Bronze`. The notebook
+discovers CSV files recursively, so neither the file name nor a `landing`
+subfolder is required. Each CSV must contain exactly the `review` and
+`sentiment` columns.
+
+Bronze fingerprints each CSV by its SHA-256 content hash and ingests a hash
+only once. Identical file contents are skipped even if the file name changes;
+changed contents are treated as a new batch and appended. Upload changed
+versions as separate files if the previous version should remain in the
+history. The original files remain unchanged, and the Delta table records each
+source path and hash. Silver and Gold run only when Bronze reports data that
+has not yet been processed. Gold stores the processed hashes so a later
+pipeline run can retry if a transform failed.
+
+Run the pipeline after uploading new files. No pipeline schedule or automatic
+file-arrival trigger is configured by these source definitions.
 
 All notebooks use `Training_Tom` as the default `workspace_name` parameter
 when constructing OneLake paths. Override it when you sync these items to
