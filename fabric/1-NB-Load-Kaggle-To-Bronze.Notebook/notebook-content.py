@@ -10,7 +10,7 @@
 
 # CELL ********************
 
-workspace_name = ""
+workspace_id = ""
 
 # METADATA ********************
 
@@ -24,42 +24,70 @@ workspace_name = ""
 
 # CELL ********************
 
-from urllib.parse import quote, unquote
+from urllib.parse import quote, unquote, urlsplit, urlunsplit
+from uuid import UUID
 
 from pyspark.sql import functions as F
 
 
-def onelake_path(workspace: str, lakehouse: str, relative_path: str) -> str:
-    normalized_workspace = workspace.strip()
-    if not normalized_workspace:
-        raise ValueError("workspace_name must not be empty.")
+def resolve_workspace_id(workspace_id: str) -> str:
+    candidate = workspace_id.strip() if workspace_id else ""
+    if not candidate:
+        candidate = notebookutils.runtime.context.get("currentWorkspaceId")
+    if not candidate:
+        raise ValueError(
+            "workspace_id was not provided and Fabric runtime context "
+            "does not include the current workspace ID."
+        )
+    try:
+        return str(UUID(candidate))
+    except ValueError as error:
+        raise ValueError("workspace_id must be a valid GUID.") from error
+
+
+def onelake_path(
+    workspace_id: str, lakehouse: str, relative_path: str
+) -> str:
+    normalized_workspace_id = resolve_workspace_id(workspace_id)
     if any(part in {"", ".", ".."} for part in relative_path.split("/")):
         raise ValueError("Lakehouse path must be a non-empty relative path.")
 
-    encoded_workspace = quote(normalized_workspace, safe="")
+    lakehouse_item = notebookutils.lakehouse.get(
+        lakehouse, workspaceId=normalized_workspace_id
+    )
+    try:
+        lakehouse_id = str(UUID(lakehouse_item.id))
+    except (AttributeError, ValueError) as error:
+        raise ValueError(
+            f"Could not resolve Lakehouse {lakehouse} to a valid item ID."
+        ) from error
+
     encoded_path = "/".join(
         quote(part, safe="") for part in relative_path.split("/")
     )
     return (
-        f"abfss://{encoded_workspace}@onelake.dfs.fabric.microsoft.com/"
-        f"{lakehouse}.Lakehouse/{encoded_path}"
+        f"abfss://{normalized_workspace_id}@onelake.dfs.fabric.microsoft.com/"
+        f"{lakehouse_id}/{encoded_path}"
     )
 
 
-def resolve_workspace_name(workspace: str) -> str:
-    normalized_workspace = workspace.strip() if workspace else ""
-    if normalized_workspace:
-        return normalized_workspace
+def safe_abfss_path(path: str) -> str:
+    parsed = urlsplit(path)
+    if parsed.scheme not in {"abfs", "abfss"} or not parsed.netloc:
+        raise ValueError("Discovered CSV path is not an absolute ABFS URI.")
 
-    current_workspace = notebookutils.runtime.context.get(
-        "currentWorkspaceName"
+    encoded_path = "/".join(
+        quote(unquote(part), safe="") for part in parsed.path.split("/")
     )
-    if not current_workspace:
-        raise ValueError(
-            "workspace_name was not provided and Fabric runtime context "
-            "does not include the current workspace."
+    return urlunsplit(
+        (
+            parsed.scheme,
+            parsed.netloc,
+            encoded_path,
+            parsed.query,
+            parsed.fragment,
         )
-    return current_workspace
+    )
 
 
 def normalize_path(path: str) -> str:
@@ -100,9 +128,10 @@ def load_file_hashes(file_paths: list) -> dict:
     if not file_paths:
         return {}
 
+    safe_file_paths = [safe_abfss_path(path) for path in file_paths]
     hash_rows = (
         spark.read.format("binaryFile")
-        .load(file_paths)
+        .load(safe_file_paths)
         .select(
             F.col("path").alias("file_path"),
             F.sha2(F.col("content"), 256).alias("file_hash"),
@@ -113,7 +142,7 @@ def load_file_hashes(file_paths: list) -> dict:
         normalize_path(row["file_path"]): row["file_hash"]
         for row in hash_rows
     }
-    if set(hashes) != {normalize_path(path) for path in file_paths}:
+    if set(hashes) != {normalize_path(path) for path in safe_file_paths}:
         raise RuntimeError("Could not fingerprint every CSV file in OneLake.")
     return hashes
 
@@ -182,14 +211,14 @@ def migrate_legacy_bronze_table(bronze_df, bronze_path: str):
     return bronze_df
 
 
-def load_bronze(workspace: str) -> None:
+def load_bronze(workspace_id: str) -> None:
     spark.conf.set("spark.sql.session.timeZone", "UTC")
-    files_root = onelake_path(workspace, "LH_Bronze", "Files")
+    files_root = onelake_path(workspace_id, "LH_Bronze", "Files")
     target_uri = onelake_path(
-        workspace, "LH_Bronze", "Tables/bronze_imdb_reviews"
+        workspace_id, "LH_Bronze", "Tables/bronze_imdb_reviews"
     )
     processed_files_uri = onelake_path(
-        workspace, "LH_Gold", "Tables/gold_processed_files"
+        workspace_id, "LH_Gold", "Tables/gold_processed_files"
     )
 
     discovered_files = list_csv_files(files_root)
@@ -254,7 +283,7 @@ def load_bronze(workspace: str) -> None:
                 .option("escape", '"')
                 .option("encoding", "UTF-8")
                 .option("mode", "FAILFAST")
-                .load(file.path)
+                .load(safe_abfss_path(file.path))
             )
             if set(source_df.columns) != {"review", "sentiment"}:
                 raise ValueError(
@@ -298,7 +327,7 @@ def load_bronze(workspace: str) -> None:
     notebookutils.notebook.exit("true" if has_pending_data else "false")
 
 
-load_bronze(resolve_workspace_name(workspace_name))
+load_bronze(resolve_workspace_id(workspace_id))
 
 # METADATA ********************
 

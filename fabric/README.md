@@ -30,12 +30,12 @@ pipeline run can retry if a transform failed.
 Run the pipeline after uploading new files. No pipeline schedule or automatic
 file-arrival trigger is configured by these source definitions.
 
-All notebooks resolve an empty `workspace_name` parameter from the current
-Fabric runtime workspace, so the same pipeline works when synced to another
-workspace. Set the parameter only when a notebook should intentionally read
-Lakehouses in a different workspace. The notebooks do not use a default
-Lakehouse binding, so Fabric does not need to resolve a placeholder workspace
-ID at notebook startup.
+All notebooks resolve an empty `workspace_id` parameter from the current
+Fabric runtime context. They look up each Lakehouse item ID by name and build
+OneLake ABFS paths using workspace and item GUIDs, so workspaces with spaces
+or other special characters in their names are supported. Set the parameter
+only when a notebook should intentionally read Lakehouses in a different
+workspace. The notebooks do not use a default Lakehouse binding.
 
 The Delta tables are written directly under each Lakehouse's `Tables` folder.
 They can be read by the next notebook through the matching OneLake path.
