@@ -120,6 +120,10 @@ export async function loadRotterdamAreas(
     url.searchParams.set('limit', String(PAGE_SIZE));
     url.searchParams.set('offset', String(offset));
     url.searchParams.set('select', SELECTED_FIELDS.join(','));
+    url.searchParams.set(
+      'where',
+      'geo_point_2d IS NOT NULL AND cbs_buurtnaam IS NOT NULL'
+    );
 
     let response: Response;
     try {

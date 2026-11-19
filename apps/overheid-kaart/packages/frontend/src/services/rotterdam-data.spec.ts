@@ -54,6 +54,9 @@ describe('loadRotterdamAreas', () => {
     const secondUrl = new URL(String(fetcher.mock.calls[1][0]));
     expect(firstUrl.searchParams.get('select')).toContain('geo_point_2d');
     expect(firstUrl.searchParams.get('select')).not.toContain('geo_shape');
+    expect(firstUrl.searchParams.get('where')).toBe(
+      'geo_point_2d IS NOT NULL AND cbs_buurtnaam IS NOT NULL'
+    );
     expect(firstUrl.searchParams.get('offset')).toBe('0');
     expect(secondUrl.searchParams.get('offset')).toBe('1');
   });
