@@ -58,6 +58,8 @@ def process_silver(workspace: str) -> None:
         "review",
         "sentiment",
         "source_file_name",
+        "source_file_path",
+        "source_file_hash",
         "ingested_at_utc",
     }
     if not required_columns.issubset(set(bronze_df.columns)):
@@ -67,6 +69,8 @@ def process_silver(workspace: str) -> None:
         F.trim(F.col("review").cast("string")).alias("review"),
         F.lower(F.trim(F.col("sentiment").cast("string"))).alias("sentiment"),
         F.col("source_file_name").cast("string").alias("source_file_name"),
+        F.col("source_file_path").cast("string").alias("source_file_path"),
+        F.col("source_file_hash").cast("string").alias("source_file_hash"),
         F.col("ingested_at_utc").cast("timestamp").alias("ingested_at_utc"),
     )
     invalid_condition = (

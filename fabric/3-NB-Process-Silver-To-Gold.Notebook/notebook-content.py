@@ -53,8 +53,16 @@ def process_gold(workspace: str) -> None:
     gold_path = onelake_path(
         workspace, "LH_Gold", "Tables/gold_sentiment_summary"
     )
+    processed_files_path = onelake_path(
+        workspace, "LH_Gold", "Tables/gold_processed_files"
+    )
     silver_df = spark.read.format("delta").load(silver_path)
-    required_columns = {"sentiment", "review_length", "word_count"}
+    required_columns = {
+        "sentiment",
+        "review_length",
+        "word_count",
+        "source_file_hash",
+    }
     if not required_columns.issubset(set(silver_df.columns)):
         raise ValueError("The Silver table is missing required columns.")
 
@@ -87,6 +95,15 @@ def process_gold(workspace: str) -> None:
         .mode("overwrite")
         .option("overwriteSchema", "true")
         .save(gold_path)
+    )
+    (
+        silver_df.select("source_file_hash")
+        .where(F.col("source_file_hash").isNotNull())
+        .distinct()
+        .write.format("delta")
+        .mode("overwrite")
+        .option("overwriteSchema", "true")
+        .save(processed_files_path)
     )
     print(
         f"Gold processing completed: {total_reviews} reviews summarized."
