@@ -1,0 +1,12 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "Lakehouse",
+    "displayName": "LH_Bronze",
+    "description": "Raw landing layer for licensed IMDb bulk data."
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "e8762056-ad32-4901-96a0-602370170d76"
+  }
+}
