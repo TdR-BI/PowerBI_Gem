@@ -1,0 +1,12 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "Notebook",
+    "displayName": "3-NB-Process-Silver-To-Gold",
+    "description": "Create a curated IMDb sentiment summary in Gold."
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "240083c6-39ba-4c4f-a4e8-2910c8b17b1e"
+  }
+}

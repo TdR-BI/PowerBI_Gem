@@ -1,0 +1,12 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "Notebook",
+    "displayName": "1-NB-Load-Kaggle-To-Bronze",
+    "description": "Load the uploaded Kaggle IMDb review CSV into the raw Bronze table."
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "f4461b66-b1e4-48ca-8456-32187775d260"
+  }
+}

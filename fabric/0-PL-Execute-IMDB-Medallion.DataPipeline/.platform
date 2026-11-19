@@ -1,0 +1,12 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "DataPipeline",
+    "displayName": "0-PL-Execute-IMDB-Medallion",
+    "description": "Run the IMDb review Bronze, Silver, and Gold notebooks in order."
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "39f209fa-cce2-44a8-9924-e9524b7d208b"
+  }
+}

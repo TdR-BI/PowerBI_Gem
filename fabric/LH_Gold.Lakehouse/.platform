@@ -3,7 +3,7 @@
   "metadata": {
     "type": "Lakehouse",
     "displayName": "LH_Gold",
-    "description": "Curated, analytics-ready IMDb data stored as Delta tables."
+    "description": "Curated IMDb sentiment metrics stored as Delta tables."
   },
   "config": {
     "version": "2.0",
