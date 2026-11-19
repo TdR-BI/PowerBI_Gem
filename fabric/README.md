@@ -5,7 +5,7 @@ following Microsoft's medallion architecture:
 
 | Lakehouse | Purpose |
 | --- | --- |
-| `LH_Bronze` | Preserve the Kaggle CSV in `Files/landing` and create a raw Delta landing table. |
+| `LH_Bronze` | Preserve the Kaggle CSV in `Files/landing` and create a raw Delta table. |
 | `LH_Silver` | Validate labels, trim text, and derive review length and word count. |
 | `LH_Gold` | Publish an analytics-ready sentiment summary as a Delta table. |
 
@@ -18,10 +18,13 @@ copies its two source columns and adds ingestion metadata. The notebook
 validates the expected columns and 50,000-row dataset size without displaying
 review text.
 
-The Silver and Gold notebooks use `Training_Tom` as the default `workspace_name`
-parameter for cross-Lakehouse reads. Override it when you sync these items to
-another workspace. Each notebook binds to its corresponding Lakehouse by
-logical ID.
+All notebooks use `Training_Tom` as the default `workspace_name` parameter
+when constructing OneLake paths. Override it when you sync these items to
+another workspace. They do not use a default Lakehouse binding, so Fabric does
+not need to resolve a placeholder workspace ID at notebook startup.
+
+The Delta tables are written directly under each Lakehouse's `Tables` folder.
+They can be read by the next notebook through the matching OneLake path.
 
 Fabric Git integration tracks Lakehouse metadata, but not table data or folders
 inside a Lakehouse's `Files` area. After a PR is merged, sync the connected
