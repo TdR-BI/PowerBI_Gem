@@ -5,18 +5,6 @@
 # META {
 # META   "kernel_info": {
 # META     "name": "synapse_pyspark"
-# META   },
-# META   "dependencies": {
-# META     "lakehouse": {
-# META       "default_lakehouse": "4580972c-1cd8-4e69-a252-c8a6cbf5e4ba",
-# META       "default_lakehouse_name": "LH_Gold",
-# META       "default_lakehouse_workspace_id": "00000000-0000-0000-0000-000000000000",
-# META       "known_lakehouses": [
-# META         {
-# META           "id": "4580972c-1cd8-4e69-a252-c8a6cbf5e4ba"
-# META         }
-# META       ]
-# META     }
 # META   }
 # META }
 
@@ -41,23 +29,29 @@ from urllib.parse import quote
 from pyspark.sql import functions as F
 
 
-def table_path(workspace: str, lakehouse: str, table: str) -> str:
+def onelake_path(workspace: str, lakehouse: str, relative_path: str) -> str:
     normalized_workspace = workspace.strip()
     if not normalized_workspace:
         raise ValueError("workspace_name must not be empty.")
-    if not table.replace("_", "").isalnum():
-        raise ValueError("table name contains unsupported characters.")
+    if any(part in {"", ".", ".."} for part in relative_path.split("/")):
+        raise ValueError("Lakehouse path must be a non-empty relative path.")
 
     encoded_workspace = quote(normalized_workspace, safe="")
+    encoded_path = "/".join(
+        quote(part, safe="") for part in relative_path.split("/")
+    )
     return (
         f"abfss://{encoded_workspace}@onelake.dfs.fabric.microsoft.com/"
-        f"{lakehouse}.Lakehouse/Tables/{table}"
+        f"{lakehouse}.Lakehouse/{encoded_path}"
     )
 
 
 def process_gold(workspace: str) -> None:
-    silver_path = table_path(
-        workspace, "LH_Silver", "silver_imdb_reviews"
+    silver_path = onelake_path(
+        workspace, "LH_Silver", "Tables/silver_imdb_reviews"
+    )
+    gold_path = onelake_path(
+        workspace, "LH_Gold", "Tables/gold_sentiment_summary"
     )
     silver_df = spark.read.format("delta").load(silver_path)
     required_columns = {"sentiment", "review_length", "word_count"}
@@ -92,7 +86,7 @@ def process_gold(workspace: str) -> None:
         summary_df.write.format("delta")
         .mode("overwrite")
         .option("overwriteSchema", "true")
-        .saveAsTable("gold_sentiment_summary")
+        .save(gold_path)
     )
     print(
         f"Gold processing completed: {total_reviews} reviews summarized."
