@@ -10,7 +10,7 @@
 
 # CELL ********************
 
-workspace_name = ""
+workspace_id = ""
 
 # METADATA ********************
 
@@ -25,49 +25,58 @@ workspace_name = ""
 # CELL ********************
 
 from urllib.parse import quote
+from uuid import UUID
 
 from pyspark.sql import functions as F
 
 
-def resolve_workspace_name(workspace: str) -> str:
-    normalized_workspace = workspace.strip() if workspace else ""
-    if normalized_workspace:
-        return normalized_workspace
-
-    current_workspace = notebookutils.runtime.context.get(
-        "currentWorkspaceName"
-    )
-    if not current_workspace:
+def resolve_workspace_id(workspace_id: str) -> str:
+    candidate = workspace_id.strip() if workspace_id else ""
+    if not candidate:
+        candidate = notebookutils.runtime.context.get("currentWorkspaceId")
+    if not candidate:
         raise ValueError(
-            "workspace_name was not provided and Fabric runtime context "
-            "does not include the current workspace."
+            "workspace_id was not provided and Fabric runtime context "
+            "does not include the current workspace ID."
         )
-    return current_workspace
+    try:
+        return str(UUID(candidate))
+    except ValueError as error:
+        raise ValueError("workspace_id must be a valid GUID.") from error
 
 
-def onelake_path(workspace: str, lakehouse: str, relative_path: str) -> str:
-    normalized_workspace = workspace.strip()
-    if not normalized_workspace:
-        raise ValueError("workspace_name must not be empty.")
+def onelake_path(
+    workspace_id: str, lakehouse: str, relative_path: str
+) -> str:
+    normalized_workspace_id = resolve_workspace_id(workspace_id)
     if any(part in {"", ".", ".."} for part in relative_path.split("/")):
         raise ValueError("Lakehouse path must be a non-empty relative path.")
 
-    encoded_workspace = quote(normalized_workspace, safe="")
+    lakehouse_item = notebookutils.lakehouse.get(
+        lakehouse, workspaceId=normalized_workspace_id
+    )
+    try:
+        lakehouse_id = str(UUID(lakehouse_item.id))
+    except (AttributeError, ValueError) as error:
+        raise ValueError(
+            f"Could not resolve Lakehouse {lakehouse} to a valid item ID."
+        ) from error
+
     encoded_path = "/".join(
         quote(part, safe="") for part in relative_path.split("/")
     )
     return (
-        f"abfss://{encoded_workspace}@onelake.dfs.fabric.microsoft.com/"
-        f"{lakehouse}.Lakehouse/{encoded_path}"
+        f"abfss://{normalized_workspace_id}@onelake.dfs.fabric.microsoft.com/"
+        f"{lakehouse_id}/{encoded_path}"
     )
 
 
-def process_silver(workspace: str) -> None:
+def process_silver(workspace_id: str) -> None:
     bronze_path = onelake_path(
-        workspace, "LH_Bronze", "Tables/bronze_imdb_reviews"
+        workspace_id, "LH_Bronze", "Tables/bronze_imdb_reviews"
     )
     silver_path = onelake_path(
-        workspace, "LH_Silver", "Tables/silver_imdb_reviews"
+        workspace_id, "LH_Silver", "Tables/silver_imdb_reviews"
     )
     bronze_df = spark.read.format("delta").load(bronze_path)
     required_columns = {
@@ -122,7 +131,7 @@ def process_silver(workspace: str) -> None:
     print(f"Silver processing completed: {row_count} rows.")
 
 
-process_silver(resolve_workspace_name(workspace_name))
+process_silver(resolve_workspace_id(workspace_id))
 
 # METADATA ********************
 
