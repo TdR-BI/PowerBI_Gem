@@ -10,7 +10,7 @@
 
 # CELL ********************
 
-workspace_name = "Training_Tom"
+workspace_name = ""
 
 # METADATA ********************
 
@@ -27,6 +27,22 @@ workspace_name = "Training_Tom"
 from urllib.parse import quote
 
 from pyspark.sql import functions as F
+
+
+def resolve_workspace_name(workspace: str) -> str:
+    normalized_workspace = workspace.strip() if workspace else ""
+    if normalized_workspace:
+        return normalized_workspace
+
+    current_workspace = notebookutils.runtime.context.get(
+        "currentWorkspaceName"
+    )
+    if not current_workspace:
+        raise ValueError(
+            "workspace_name was not provided and Fabric runtime context "
+            "does not include the current workspace."
+        )
+    return current_workspace
 
 
 def onelake_path(workspace: str, lakehouse: str, relative_path: str) -> str:
@@ -106,7 +122,7 @@ def process_silver(workspace: str) -> None:
     print(f"Silver processing completed: {row_count} rows.")
 
 
-process_silver(workspace_name)
+process_silver(resolve_workspace_name(workspace_name))
 
 # METADATA ********************
 

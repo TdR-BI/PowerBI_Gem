@@ -10,7 +10,7 @@
 
 # CELL ********************
 
-workspace_name = "Training_Tom"
+workspace_name = ""
 
 # METADATA ********************
 
@@ -44,6 +44,22 @@ def onelake_path(workspace: str, lakehouse: str, relative_path: str) -> str:
         f"abfss://{encoded_workspace}@onelake.dfs.fabric.microsoft.com/"
         f"{lakehouse}.Lakehouse/{encoded_path}"
     )
+
+
+def resolve_workspace_name(workspace: str) -> str:
+    normalized_workspace = workspace.strip() if workspace else ""
+    if normalized_workspace:
+        return normalized_workspace
+
+    current_workspace = notebookutils.runtime.context.get(
+        "currentWorkspaceName"
+    )
+    if not current_workspace:
+        raise ValueError(
+            "workspace_name was not provided and Fabric runtime context "
+            "does not include the current workspace."
+        )
+    return current_workspace
 
 
 def normalize_path(path: str) -> str:
@@ -282,7 +298,7 @@ def load_bronze(workspace: str) -> None:
     notebookutils.notebook.exit("true" if has_pending_data else "false")
 
 
-load_bronze(workspace_name)
+load_bronze(resolve_workspace_name(workspace_name))
 
 # METADATA ********************
 
