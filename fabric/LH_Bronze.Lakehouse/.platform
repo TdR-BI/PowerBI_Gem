@@ -3,7 +3,7 @@
   "metadata": {
     "type": "Lakehouse",
     "displayName": "LH_Bronze",
-    "description": "Raw landing layer for licensed IMDb bulk data."
+    "description": "Raw landing layer for the Kaggle IMDb 50K reviews dataset."
   },
   "config": {
     "version": "2.0",

@@ -1,0 +1,12 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "Notebook",
+    "displayName": "2-NB-Process-Bronze-To-Silver",
+    "description": "Validate and standardize IMDb reviews into Silver Delta."
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "1a7c205e-1def-4bac-a879-a8ccab2d1efe"
+  }
+}
