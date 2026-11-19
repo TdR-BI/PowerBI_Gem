@@ -1,0 +1,12 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "Lakehouse",
+    "displayName": "LH_Gold",
+    "description": "Curated, analytics-ready IMDb data stored as Delta tables."
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "4580972c-1cd8-4e69-a252-c8a6cbf5e4ba"
+  }
+}
