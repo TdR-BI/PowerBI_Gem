@@ -6,6 +6,21 @@ This is the workspace template the Rayfin Copilot plugin uses to build Fabric Ap
 The base is small on purpose: dynamic authentication, theming, an error boundary, and a welcome page that works inside or outside the Fabric portal after sign-in.
 Capabilities such as Power BI analytics and trusted server-side functions are added on demand with `npm run pack:add -- <pack>`.
 
+## Deploy from GitHub
+
+The workflow at `.github/workflows/deploy-christmas-cookie-clicker.yml` validates pull requests that change this app. After those changes are merged to `main`, it waits for the `fabric-production` GitHub Environment approval and then deploys the app to Fabric with Rayfin. You can also start the workflow manually from `main`.
+
+Before merging the deployment workflow, a repository administrator must configure the following:
+
+1. In **Settings → Environments**, create `fabric-production` and add required deployment reviewers.
+2. Add these environment variables:
+   - `AZURE_CLIENT_ID` — the Entra application/client ID used by GitHub OIDC.
+   - `AZURE_TENANT_ID` — the Entra tenant ID.
+   - `FABRIC_WORKSPACE_ID` — the existing Fabric workspace ID for deployment.
+3. Configure an Entra federated credential for this GitHub environment with subject `repo:TdR-BI/PowerBI_Gem:environment:fabric-production` and audience `api://AzureADTokenExchange`. Allow the service principal to use Fabric APIs in the tenant and grant it Contributor access to the target workspace.
+
+No client secret or Fabric token is stored in GitHub; the workflow obtains a short-lived token through OIDC. The target workspace must already have Fabric capacity. Rayfin runs with `--yes` for non-interactive CI, so the environment approver should verify the workspace target before approving; Rayfin documents that this flag also approves capacity assignment or trial creation when applicable.
+
 ## Workspace layout
 
 The application is an npm workspace with one control root and three base packages:

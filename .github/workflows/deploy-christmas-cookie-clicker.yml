@@ -1,0 +1,127 @@
+name: Christmas Cookie Clicker
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - apps/christmas-cookie-clicker/**
+      - .github/workflows/deploy-christmas-cookie-clicker.yml
+  push:
+    branches:
+      - main
+    paths:
+      - apps/christmas-cookie-clicker/**
+      - .github/workflows/deploy-christmas-cookie-clicker.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: christmas-cookie-clicker-fabric-production
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    name: Validate app
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/christmas-cookie-clicker
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/christmas-cookie-clicker/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps --ignore-scripts --no-audit --no-fund
+
+      - name: Type-check
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm test
+
+  deploy:
+    name: Deploy to Fabric
+    needs: validate
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment:
+      name: fabric-production
+    permissions:
+      contents: read
+      id-token: write
+    defaults:
+      run:
+        working-directory: apps/christmas-cookie-clicker
+    env:
+      AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+      AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+      FABRIC_WORKSPACE_ID: ${{ vars.FABRIC_WORKSPACE_ID }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/christmas-cookie-clicker/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps --ignore-scripts --no-audit --no-fund
+
+      - name: Check deployment configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in AZURE_CLIENT_ID AZURE_TENANT_ID FABRIC_WORKSPACE_ID; do
+            if [[ -z "${!name}" ]]; then
+              echo "::error::Set the $name variable in the fabric-production GitHub Environment."
+              exit 1
+            fi
+          done
+
+      - name: Sign in to Azure with GitHub OIDC
+        uses: azure/login@v2
+        with:
+          client-id: ${{ env.AZURE_CLIENT_ID }}
+          tenant-id: ${{ env.AZURE_TENANT_ID }}
+          allow-no-subscriptions: true
+
+      - name: Acquire Fabric API token
+        shell: bash
+        run: |
+          set -euo pipefail
+          token="$(az account get-access-token \
+            --resource https://api.fabric.microsoft.com \
+            --query accessToken \
+            --output tsv)"
+          if [[ -z "$token" ]]; then
+            echo "::error::Azure sign-in did not return a Fabric API token."
+            exit 1
+          fi
+          echo "::add-mask::$token"
+          echo "RAYFIN_TOKEN=$token" >> "$GITHUB_ENV"
+
+      - name: Deploy Rayfin app
+        run: >-
+          npx rayfin --json up
+          --workspace-id "$FABRIC_WORKSPACE_ID"
+          --item-name "Christmas Cookie Clicker"
+          --yes
